@@ -1,0 +1,17 @@
+{
+    "name": "hcalvo/intranet",
+    "description": "Framework for intranet",
+    "type": "project",
+    "authors": [
+        {
+            "name": "BoC Mexico"
+        }
+    ],
+    "require": {},
+    "autoload": {
+        "psr-4": {
+            "Core\\": "core/",
+            "App\\": "app/"
+        }
+    }
+}
