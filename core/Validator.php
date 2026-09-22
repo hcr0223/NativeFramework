@@ -47,9 +47,37 @@ class Validator {
 		}
 	}
 
-	protected function validateEmail(string $field, mixed $value):void {
+	protected function validateEmail(string $field, mixed $value): void {
 		if (!empty($value) && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
 			$this->addError($field, "The value provided must be a valid email address");
+		}
+	}
+
+	protected function validateMin(string $field, mixed $value, ?string $parameter): void {
+		$min = (int) $parameter;
+		if (!empty($value) && strlen((string) $value) < $min) {
+			$this->addError($field, "The ".str_replace("_", " ", $field)." must be at least {$min} characters long.");
+		}
+	}
+
+	protected function validateMax(string $field, mixed $value, ?string $parameter): void {
+		$max = (int) $parameter;
+		if (!empty($value) && strlen((string) $value) > $max) {
+			$this->addError($field, "The ".str_replace("_", " ", $field)." may not exceed {$max} characters.");
+		}
+	}
+
+	protected function validateUnique(string $field, mixed $value, ?string $parameter): void {
+		if (empty($value) || !$parameter) return;
+
+		[$table, $column] = explode(',', $parameter);
+
+		$db = Database::getConnection();
+		$stmt = $db->prepare("SELECT COUNT(*) FROM {$table} WHERE {$column} = :val LIMIT 1");
+		$stmt->execute(['val' => $value]);
+
+		if ($stmt->fetchColumn() > 0) {
+			$this->addError($field, "This ".str_replace("_", " ", $field)." has already been taken.");
 		}
 	}
 

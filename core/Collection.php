@@ -61,4 +61,35 @@ class Collection implements IteratorAggregate, Countable, ArrayAccess {
     public function offsetUnset(mixed $offset): void {
         unset($this->items[$offset]);
     }
+
+    public function pluck(string $valueKey, ?string $indexKey = null): array {
+        $getNestedValue = function (array $item, string $path) {
+            foreach (explode('.', $path) as $segment) {
+                if (is_array($item) && array_key_exists($segment, $item)) {
+                    $item = $item[$segment];
+                } else {
+                    return null;
+                }
+            }
+            return $item;
+        }
+
+        $result = [];
+
+        foreach ($this->items as $item) {
+            $itemArray = is_object($item) ? (array) $item->jsonSerialize() : $item;
+            $value = $getNestedValue($itemArray, $valueKey);
+
+            if ($indexKey !== null) {
+                $key = $getNestedValue($itemArray, $indexKey);
+
+                if ($key !== null) {
+                    $result[$key] = $value;
+                }
+            } else {
+                $result[] = $value;
+            }
+        }
+        return $result;
+    }
 }
