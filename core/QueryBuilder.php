@@ -44,7 +44,7 @@ class QueryBuilder {
     }
 
     public function get(): Collection {
-        $sql = "SELECT * {$this->table}";
+        $sql = "SELECT * FROM {$this->table}";
 
         if(!empty($this->wheres)) {
             $sql .= " WHERE ".implode(' AND ', $this->wheres);
@@ -58,7 +58,7 @@ class QueryBuilder {
             $sql .= " LIMIT {$this->limit}";
         }
 
-        $stmt = $this->db->prepare($db);
+        $stmt = $this->db->prepare($sql);
         $stmt->execute($this->bindings);
 
         $results = $stmt->fetchAll(PDO::FETCH_CLASS, $this->modelClass);

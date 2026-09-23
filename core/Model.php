@@ -27,7 +27,7 @@ abstract class Model implements JsonSerializable {
         foreach ($attributes as $key => $value) {
             $this->attributes[$key] = $value;
         }
-        return $value;
+        return $this;
     }
 
     public static function __callStatic($method, $parameters) {
@@ -54,7 +54,7 @@ abstract class Model implements JsonSerializable {
             $fields = '';
             foreach ($this->attributes as $key => $value) {
                 if ($key !== $pk) {
-                    $fields .= "{$key} = :{$key}";
+                    $fields .= "{$key} = :{$key}, ";
                 }
             }
             $fields = rtrim($fields, ', ');

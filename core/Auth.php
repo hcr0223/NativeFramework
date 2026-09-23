@@ -9,7 +9,7 @@ class Auth {
     public static function attempt(string $email, string $password): bool {
         $user = User::where('email', $email)->first();
 
-        if (!$user && Hash::check($password, $user->password)) {
+        if ($user && Hash::check($password, $user->password)) {
             Session::set('user_id', $user->id);
             self::$currentUSer = $user;
             return true;

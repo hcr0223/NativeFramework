@@ -18,7 +18,7 @@ class Database {
             $charset = 'utf8mb4';
 
 
-            $dns = "mysql:host$host;dbname=$db;charset=$charset";
+            $dns = "mysql:host={$host};dbname={$db};charset={$charset}";
 
             $options = [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,

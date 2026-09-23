@@ -72,7 +72,7 @@ class Collection implements IteratorAggregate, Countable, ArrayAccess {
                 }
             }
             return $item;
-        }
+        };
 
         $result = [];
 

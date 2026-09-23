@@ -13,6 +13,6 @@ class Hash {
     }
 
     public static function needRehash(string $hashedPassword): bool {
-        return password_hash($hashedPassword, PASSWORD_DEFAULT, ['cost' => 12]);
+        return password_needs_hash($hashedPassword, PASSWORD_DEFAULT, ['cost' => 12]);
     }
 }

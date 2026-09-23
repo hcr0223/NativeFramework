@@ -23,7 +23,7 @@ abstract class Controller {
     protected function requestData(): array {
         $sanitized = [];
         foreach($_POST as $key => $value) {
-            $sanitized[$key] = is_string($value) ? htmlspecialchars(trim($value), ENT_QUOTES, 'UTF-8') : $value;
+            $sanitized[$key] = is_string($value) ? trim($value) : $value;
         }
         return $sanitized;
     }
