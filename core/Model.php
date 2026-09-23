@@ -23,6 +23,13 @@ abstract class Model implements JsonSerializable {
         return new QueryBuilder(static::class, $instance->table);
     }
 
+    public function fill(array $attributes): static {
+        foreach ($attributes as $key => $value) {
+            $this->attributes[$key] = $value;
+        }
+        return $value;
+    }
+
     public static function __callStatic($method, $parameters) {
         return call_user_func_array([static::query(), $method], $parameters);
     }
