@@ -11,14 +11,18 @@ class Database {
 
     public static function getConnection(): PDO {
         if(self::$instance === null) {
-            $host = '127.0.0.1';
-            $db = 'intranet';
-            $user = 'root';
-            $password = '';
-            $charset = 'utf8mb4';
+
+            Env::load(__DIR__.'/../.env');
+
+            $host     = Env::get('DB_HOST', '127.0.0.1');
+            $db       = Env::get('DB_DATABASE', 'intranet');
+            $user     = Env::get('DB_USERNAME', 'root');
+            $password = Env::get('DB_PASSWORD', '');
+            $charset  = Env::get('DB_CHARSET', 'utf8mb4');
+            $port     = Env::get('DB_PORT', '3306');
 
 
-            $dns = "mysql:host={$host};dbname={$db};charset={$charset}";
+            $dns = "mysql:host={$host};port={$port};dbname={$db};charset={$charset}";
 
             $options = [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,

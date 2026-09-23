@@ -70,4 +70,50 @@ class QueryBuilder {
         $results = $this->limit(1)->get();
         return $results->first();
     }
+
+    public function insertMany(array $records): bool {
+        if (empty($records)) {
+            return false;
+        }
+
+        // Get column names from the first record
+        $firstRecord = reset($records);
+        $columns = array_keys($firstRecord);
+        $quotedColumns = implode(', ', $columns);
+
+        $rowPlaceholders = [];
+        $bindings = [];
+        $rowIndex = 0;
+
+        foreach ($records as $record) {
+            $valuePlaceholders = [];
+            foreach ($columns as $column) {
+                $paramName = "{$column}_{$rowIndex}";
+                $valuePlaceholders[] = ":{$paramName}";
+                $bindings[$paramName] = $record[$column] ?? null;
+            }
+            $rowPlaceholders[] = '(' . implode(', ', $valuePlaceholders) . ')';
+            $rowIndex++;
+        }
+
+        $sql = "INSERT INTO {$this->table} ({$quotedColumns}) VALUES " . implode(', ', $rowPlaceholders);
+
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute($bindings);
+    }
+
+    public function delete(): bool {
+        $sql = "DELETE FROM {$this->table}";
+
+        if (!empty($this->wheres)) {
+            $sql .= " WHERE ".implode(' AND ', $this->wheres);
+        }
+
+        if ($this->limit !== null) {
+            $sql .= " LIMIT {$this->limit}";
+        }
+
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute($this->bindings);
+    }
 }

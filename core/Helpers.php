@@ -17,3 +17,7 @@ function response_json(mixed $data, int $statusCode): void {
 	echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
 }
+
+function env(string $key, mixed $default = null): mixed {
+	return \Core\Env::get($key, $default);
+}

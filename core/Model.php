@@ -80,6 +80,15 @@ abstract class Model implements JsonSerializable {
         return $this->attributes;
     }
 
+    public static function createMany(array $records): bool {
+        if (empty($records)) {
+            return false;
+        }
+
+        // Delegate to QueryBuilder bulk insert
+        return static::query()->insertMany($records);
+    } 
+
     protected function hasMany(string $relatedModel, string $foreignKey): Collection {
         $related = new $relatedModel();
         return $relatedModel::query()
