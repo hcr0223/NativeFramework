@@ -38,6 +38,9 @@ class Collection implements IteratorAggregate, Countable, ArrayAccess {
 
     public function toArray(): array {
         return array_map(function($item) {
+            if (is_object($item) && method_exists($item, 'toArray')) {
+                return $item->toArray();
+            }
             return method_exists($item, 'all') ? $item->all() : $item;
         }, $this->items);
     }

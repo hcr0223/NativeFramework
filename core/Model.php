@@ -10,6 +10,9 @@ abstract class Model implements JsonSerializable {
     protected string $primaryKey;
     protected array $attributes = [];
 
+    protected array $hidden = [];
+    protected array $visible = [];
+
     public function __set($name, $value) {
         $this->attributes[$name] = $value;
     }
@@ -74,6 +77,32 @@ abstract class Model implements JsonSerializable {
         }
 
         return $result;
+    }
+
+    public function toArray(): array {
+        $attributes = $this->attributes;
+
+        if (!empty($this->visible)) {
+            return array_intersect_key($attributes, array_flip($this->visible));
+        }
+
+        if(!empty($this->hidden)) {
+            foreach($this->hidden as $key) {
+                unset($attributes[$key]);
+            }
+        }
+
+        return $attributes;
+    }
+
+    public function setHidden(array $hidden): static {
+        $this->hidden = $hidden;
+        return $this;
+    }
+
+    public function setVisible(array $visible): static {
+        $this->visible = $visible;
+        return $this;
     }
 
     public function jsonSerialize(): array {
