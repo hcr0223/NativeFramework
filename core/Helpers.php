@@ -21,3 +21,27 @@ function response_json(mixed $data, int $statusCode): void {
 function env(string $key, mixed $default = null): mixed {
 	return \Core\Env::get($key, $default);
 }
+
+if (!function_exists('extends_layout')) {
+    function extends_layout(string $layout): void {
+        \Core\View::extends($layout);
+    }
+}
+
+if (!function_exists('section')) {
+    function section(string $name): void {
+        \Core\View::section($name);
+    }
+}
+
+if (!function_exists('endsection')) {
+    function endsection(): void {
+        \Core\View::endsection();
+    }
+}
+
+if (!function_exists('yield_content')) {
+    function yield_content(string $name, string $default = ''): string {
+        return \Core\View::yield($name, $default);
+    }
+}

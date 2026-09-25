@@ -3,21 +3,8 @@
 namespace Core;
 
 abstract class Controller {
-    protected function render(string $view, array $data = []) {
-        extract($data);
-
-        $viewFile = __DIR__."/../app/Views/{$view}.php";
-
-        if (file_exists($viewFile)) {
-            ob_start();
-            include $viewFile;
-            $content = ob_get_clean();
-
-            echo $content;
-        } else {
-            http_response_code(500);
-            echo "<h1>500 Internal Server Error</h1><p>View file '{$view}.php' not found!</p>";
-        }
+    protected function render(string $view, array $data = []): void {
+        echo View::render($view, $data);
     }
 
     protected function requestData(): array {

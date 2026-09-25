@@ -6,6 +6,6 @@ use Core\Controller;
 
 class HomeController extends Controller {
 	public function index() {
-		return $this->json(['Hola' => 'mundo']);
+		return $this->render('home/index');
 	}
 }
