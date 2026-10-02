@@ -40,4 +40,19 @@ class Database {
 
         return self::$instance;
     }
+
+    public static function raw(string $sql, array $bindings, bool $collected = false): array|Collection {
+        $db = self::getConnection();
+
+        $stmt = $db->prepare($sql);
+        $success = $stmt->execute($bindings);
+
+        if (!preg_match('/^\s*(select|show||describe|explain)/i', $sql)) {
+            return $success;
+        }
+
+        $results = $stmt->fetchAll();
+
+        return ($collected) ? new Collection($results) : $results;
+    }
 }
