@@ -6,8 +6,9 @@ use ArrayIterator;
 use IteratorAggregate;
 use Countable;
 use ArrayAccess;
+use JsonSerializable;
 
-class Collection implements IteratorAggregate, Countable, ArrayAccess {
+class Collection implements IteratorAggregate, Countable, ArrayAccess, JsonSerializable {
     protected array $items = [];
 
     public function __construct(array $items = []) {
@@ -28,6 +29,10 @@ class Collection implements IteratorAggregate, Countable, ArrayAccess {
     public function map(callable $callback): self {
         return new self(array_map($callback, $this->items));
     }
+
+    public function jsonSerialize(): array {
+        return $this->toArray();
+    }
     /**
      * @inheritDoc
      */
@@ -38,10 +43,18 @@ class Collection implements IteratorAggregate, Countable, ArrayAccess {
 
     public function toArray(): array {
         return array_map(function($item) {
+            if ($item instanceof Model) {
+                return $item->toArray();
+            }
+
+            if ($item instanceof JsonSerializable) {
+                return $item->jsonSerialize();
+            }
+
             if (is_object($item) && method_exists($item, 'toArray')) {
                 return $item->toArray();
             }
-            return method_exists($item, 'all') ? $item->all() : $item;
+            return $item;
         }, $this->items);
     }
 

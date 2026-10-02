@@ -9,6 +9,7 @@ abstract class Model implements JsonSerializable {
     protected string $table;
     protected string $primaryKey;
     protected array $attributes = [];
+    protected array $relations = [];
 
     protected array $hidden = [];
     protected array $visible = [];
@@ -18,7 +19,40 @@ abstract class Model implements JsonSerializable {
     }
 
     public function __get($name) {
+        if (array_key_exists($name, $this->relations)) {
+            return $this->relations[$name];
+        }
+
+        if (method_exists($this, $name)) {
+            $relationConfig = $this->$name();
+        }
+
+        // 2. Check if a relationship method exists and lazy load it
+        if (method_exists($this, $name)) {
+            $relationConfig = $this->$name();
+            if (is_array($relationConfig) && isset($relationConfig['type'])) {
+                $resolved = $this->resolveRelationQuery($relationConfig);
+                $this->relations[$name] = $resolved;
+                return $resolved;
+            }
+        }
+
         return $this->attributes[$name] ?? null;
+    }
+
+    public function setRelation(string $relation, mixed $value) {
+        $this->relations[$relation] = $value;
+    }
+
+    public function getPrimaryKey(): string {
+        return $this->primaryKey;
+    }
+    public function getAttribute(string $key): mixed {
+        return $this->attributes[$key];
+    }
+
+    public function getTable() {
+        return $this->table;
     }
 
     public static function query(): QueryBuilder {
@@ -82,6 +116,17 @@ abstract class Model implements JsonSerializable {
     public function toArray(): array {
         $attributes = $this->attributes;
 
+        // Include eager-loaded relations in array/JSON serialization
+        foreach ($this->relations as $key => $value) {
+            if ($value instanceof Collection) {
+                $attributes[$key] = $value->toArray();
+            } elseif ($value instanceof Model) {
+                $attributes[$key] = $value->toArray();
+            } else {
+                $attributes[$key] = $value;
+            }
+        }
+
         if (!empty($this->visible)) {
             return array_intersect_key($attributes, array_flip($this->visible));
         }
@@ -106,7 +151,7 @@ abstract class Model implements JsonSerializable {
     }
 
     public function jsonSerialize(): array {
-        return $this->attributes;
+        return $this->toArray();
     }
 
     public static function createMany(array $records): bool {
@@ -119,22 +164,56 @@ abstract class Model implements JsonSerializable {
     } 
 
     protected function hasMany(string $relatedModel, string $foreignKey): Collection {
-        $related = new $relatedModel();
-        return $relatedModel::query()
-            ->where($foreignKey, $this->attributes[$this->primaryKey])
-            ->get();
+        return [
+            'type' => 'hasMany',
+            'model' => $relatedModel,
+            'foreignKey' => $foreignKey,
+            'localKey' => $this->primaryKey
+        ];
     }
 
     protected function belongsTo(string $relatedModel, string $foreignKey): ?object {
         $related = new $relatedModel();
-        return $relatedModel::query()
-            ->where($related->primaryKey, $this->attributes[$foreignKey])
-            ->first();
+        return [
+            'type' => 'belongsTo',
+            'model' => $relatedModel,
+            'foreignKey' => $related->primaryKey,
+            'localKey' => $foreignKey
+        ];
     }
 
     protected function hasOne(string $relatedModel, string $foreignKey): ?object {
-        return $relatedModel::query()
-            ->where($foreignKey, $this->attributes[$this->primaryKey])
-            ->first();
+        return [
+            'type' => 'hasOne',
+            'model' => $relatedModel,
+            'foreignKey' => $foreignKey,
+            'localKey' => $this->primaryKey
+        ];
+    }
+
+    /**
+    * Lazy-load a single relationship on demand
+    */
+    protected function resolveRelationQuery(array $config): mixed {
+        $type = $config['type'];
+        $relatedModel = $config['model'];
+        $foreignKey = $config['foreignKey'];
+        $localKey = $config['localKey'];
+
+        $localValue = $this->getAttribute($localKey);
+
+        if ($localValue === null) {
+            return $type === 'hasMany' ? new Collection() : null;
+        }
+
+        if ($type === 'hasMany') {
+            return $relatedModel::query()->where($foreignKey, $localValue)->get();
+        }
+
+        if ($type === 'hasOne' || $type === 'belongsTo') {
+            return $relatedModel::query()->where($foreignKey, $localValue)->first();
+        }
+
+        return null;
     }
 }
