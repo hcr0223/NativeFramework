@@ -3,13 +3,19 @@
 namespace Core;
 
 class Mailer {
-	protected string $fromEmail;
-	protected string $fromName;
+	protected string $fromEmail = '';
+	protected string $fromName = '';
 	protected array $to = [];
 	protected string $subject = '';
 	protected string $body = '';
-	protected bool $isHtml = false;
+	protected bool $isHtml = true;
 	protected array $errors = [];
+
+	public function __construct() {
+		Env::load(__DIR__.'/../.env');
+		$this->fromEmail = Env::get('EMAIL_FROM_ADDRESS', '');
+		$this->fromName = Env::get('MAIL_FROM_NAME', '');
+	}
 
 	public function setFrom(string $email, string $name): self {
 		$this->fromEmail = $email;
@@ -33,6 +39,12 @@ class Mailer {
 		return $this;
 	}
 
+	public function view(string $view, array $data = []):self {
+		$this->body = View::render($view, $data);
+		$this->isHtml = true;
+		return $this;
+	}
+
 	public function getErrors(): array {
 		return $this->errors;
 	}
@@ -46,11 +58,14 @@ class Mailer {
 		}
 
 		Env::load(__DIR__.'/../.env');
-		$host = Env::get('EMAIL_HOST', '');
-		$port = Env::get('EMAIL_PORT', '');
+		$host = Env::get('EMAIL_HOST', '127.0.0.1');
+		$port = Env::get('EMAIL_PORT', '25');
+		$username = Env::get('EMAIL_USERNAME', '');
+		$password = Env::get('EMAIL_PASSWORD','');
 		$ehlo = Env::get('EMAIL_HELO', gethostname());
 
-		$socket = @fsockopen($host, $port, $errno, $errstr, 10);
+
+		$socket = @fsockopen($host, (int) $port, $errno, $errstr, 10);
 
 		if (!$socket) {
 			$this->errors[] = "Socket connection failed: $errstr ($errno)";
@@ -60,13 +75,29 @@ class Mailer {
 		$this->readResponse($socket);
 
 		// Transmit SMTP conversation directives
-		if (!$this->executeCmd($socket, "EHLO ".$helo, '250')) {
+		if (!$this->executeCmd($socket, "EHLO ".$ehlo, '250')) {
 			// Fallback to older HELO syntax if EHLO fails
-			if(!$this->executeCmd($socket, "HELO ".$helo, '250')) {
+			if(!$this->executeCmd($socket, "HELO ".$ehlo, '250')) {
 				fclose($socket);
 				return false;
 			}
 		}
+
+		// Autenticación SMTP si se definieron credenciales
+        if (!empty($username) && !empty($password)) {
+            if (!$this->executeCmd($socket, "AUTH LOGIN", '334')) {
+                fclose($socket);
+                return false;
+            }
+            if (!$this->executeCmd($socket, base64_encode($username), '334')) {
+                fclose($socket);
+                return false;
+            }
+            if (!$this->executeCmd($socket, base64_encode($password), '235')) {
+                fclose($socket);
+                return false;
+            }
+        }
 
 		if (!$this->executeCmd($socket, "MAIL FROM:<".$this->fromEmail.">", '250')) {
 			fclose($socket);
@@ -85,9 +116,9 @@ class Mailer {
 			return false;
 		}
 
-		$header = [];
 		$fromLine = !empty($this->fromName) ? "{$this->fromName} <{$this->fromEmail}>" : $this->fromEmail;
 
+		$headers = [];
 		$headers[] = "From: ".$fromLine;
 		$headers[] = "To: ".implode(', ', $this->to);
 		$headers[] = "Subject: ".$this->subject;
@@ -103,7 +134,7 @@ class Mailer {
 		$normalizeBody = str_replace(["\r\n", "\r", "\n"], "\r\n", $this->body);
 
 		fputs($socket, $rawHeaders . $normalizeBody."\r\n.\r\n");
-		$dataResponse = $this->readResponse();
+		$dataResponse = $this->readResponse($socket);
 
 		if (strpos($dataResponse, '250') !== 0) {
 			$this->errors[] = "Message payload rejected by data stream".$dataResponse;
@@ -117,7 +148,7 @@ class Mailer {
 		return true;
 	}
 
-	private functiono executeCmd($socket, string $cmd, string $expectedCode): bool {
+	private function executeCmd($socket, string $cmd, string $expectedCode): bool {
 		fputs($socket, $cmd."\r\n");
 		$response = $this->readResponse($socket);
 
@@ -135,7 +166,7 @@ class Mailer {
 		while ($line = fgets($socket, 512)) {
 			$response = $line;
 
-			if (isset$line[3] && $line[3] == ' ') {
+			if (isset($line[3]) && $line[3] == ' ') {
 				break;
 			}
 		}
