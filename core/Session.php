@@ -50,4 +50,14 @@ class Session {
 
         return null;
     }
+
+    public static function putIntendedUrl(string $url): void {
+        self::set('_intended_url', $url);
+    }
+
+    public static function getIntendedUrl(string $default = '/'): string {
+        $url = self::get('_intended_url', $default);
+        self::remove('_intended_url');
+        return $url;
+    }
 }
