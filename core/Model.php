@@ -91,15 +91,15 @@ abstract class Model implements JsonSerializable {
             $fields = '';
             foreach ($this->attributes as $key => $value) {
                 if ($key !== $pk) {
-                    $fields .= "{$key} = :{$key}, ";
+                    $fields .= "`{$key}` = :{$key}, ";
                 }
             }
             $fields = rtrim($fields, ', ');
-            $sql = "UPDATE {$this->table} SET {$fields} WHERE {$pk} = :{$pk}";
+            $sql = "UPDATE {$this->table} SET {$fields} WHERE `{$pk}` = :{$pk}";
             return $db->prepare($sql)->execute($this->attributes);
         }
 
-        $columns = implode(', ', array_keys($this->attributes));
+        $columns = implode(', ', array_map(fn($col) => "`{$col}`", array_keys($this->attributes)));
         $placeholders = ':' . implode(', :', array_keys($this->attributes));
 
         $sql = "INSERT INTO {$this->table} ({$columns}) VALUES ({$placeholders})";
