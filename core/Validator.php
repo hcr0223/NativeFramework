@@ -42,7 +42,7 @@ class Validator {
 	}
 
 	protected function validateRequired(string $field, mixed $value): void {
-		if ($value === null && (is_string($value) && trim($value) === '')) {
+		if ($value === null || (is_string($value) && trim($value) === '')) {
 			$this->addError($field, "The ".str_replace('_', ' ', $field)." field is required");
 		}
 	}
@@ -78,6 +78,25 @@ class Validator {
 
 		if ($stmt->fetchColumn() > 0) {
 			$this->addError($field, "This ".str_replace("_", " ", $field)." has already been taken.");
+		}
+	}
+
+	protected function validateNumeric(string $field, mixed $value, ?string $parameter): void {
+		if (!empty($value) && !is_numeric($value)) {
+			$this->addError($field, "The ".str_replace('_', ' ', $field)." must be a number.");
+		}
+	}
+
+	protected function validateDate(string $field, mixed $value, ?string $parameter): void {
+		if (empty($value)) {
+			return;
+		}
+
+		$format = $parameter ?? 'Y-m-d';
+		$d = DateTime::createFromFormat($format, (string) $value);
+
+		if(!$d || $d->format($format) !== $value) {
+			$this->addError($field, "The ".str_replace('_', ' ', $field)." must be a valid date in format {$format}.");
 		}
 	}
 
