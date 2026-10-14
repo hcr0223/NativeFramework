@@ -150,7 +150,9 @@ class QueryBuilder {
             $localKey = $relationConfig['localKey'];
 
             // Extract all local key values from primary models
-            $keys = array_filter(array_map(fn($m) => $m->getAttribute($localKey), $models->all()));
+            $keys = array_values(array_unique(array_filter(array_map(
+                fn($m) => $m->getAttribute($localKey), $models->all()
+            ))));
 
             if (empty($keys)) {
                 continue;
@@ -162,7 +164,7 @@ class QueryBuilder {
             
             $sql = "SELECT * FROM {$relatedInstance->getTable()} WHERE {$foreignKey} IN ({$placeholders})";
             $stmt = $this->db->prepare($sql);
-            $stmt->execute(array_values(array_unique($keys)));
+            $stmt->execute($keys);
 
             $relatedResults = $stmt->fetchAll(PDO::FETCH_CLASS, $relatedModelClass);
 
