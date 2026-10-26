@@ -70,11 +70,30 @@ class Validator {
 	protected function validateUnique(string $field, mixed $value, ?string $parameter): void {
 		if (empty($value) || !$parameter) return;
 
-		[$table, $column] = explode(',', $parameter);
+		/* Support format: table, column (optionally ,ignoredId, ignoreColumn) */
+		$params = explode(',', $parameter);
+		$table = $params[0] ?? null;
+		$column = $params[1] ?? $field;
+		$ignoreId = $params[2] ?? null;
+		$ignoreColumn = $params[3]?? 'id';
+
+		if (!$table) return;
 
 		$db = Database::getConnection();
-		$stmt = $db->prepare("SELECT COUNT(*) FROM {$table} WHERE {$column} = :val LIMIT 1");
-		$stmt->execute(['val' => $value]);
+		/* Build query */
+		$sql = "SELECT COUNT(*) FROM {$table} WHERE {$column} = :val";
+		$bindings = ['val' => $value];
+
+		/* If ignoreId was provided, added to the query */
+		if ($ignoreId !== null && $ignoreId !== '') {
+			$sql .= " AND `{$ignoreColumn}` !== :ignore_id";
+			$bindings['ignore_id'] = $ignoreId;
+		}
+
+		$sql .= " LIMIT 1";
+
+		$stmt = $db->prepare($sql);
+		$stmt->execute($bindings);
 
 		if ($stmt->fetchColumn() > 0) {
 			$this->addError($field, "This ".str_replace("_", " ", $field)." has already been taken.");

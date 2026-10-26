@@ -10,6 +10,7 @@ class Mailer {
 	protected string $body = '';
 	protected bool $isHtml = true;
 	protected array $errors = [];
+	protected array $attachments = [];
 
 	public function __construct() {
 		Env::load(__DIR__.'/../.env');
@@ -25,6 +26,32 @@ class Mailer {
 
 	public function addAddress(string $email): self {
 		$this->to[] = $email;
+		return $this;
+	}
+
+	public function addAttachment(string $filePath, string $filename = ''): self {
+		if (file_exists($filePath)) {
+			$this->attachments[] = [
+				'name' => $filename !== '' ? $filename : basename($filePath),
+				'data' => file_get_contents($filePath)
+			];
+		} else {
+			$this->errors[] = "Attachment file not found: {$filePath}";
+		}
+		return $this;
+	}
+
+	public function addAttachmentData(string $content, string $filename): self {
+		if (empty($filename)) {
+			$this->errors[] = "Attachment filename cannot be empty when using raw data.";
+			return $this;
+		}
+
+		$this->attachments[] = [
+			'name' => $filename,
+			'data' => $content
+		];
+
 		return $this;
 	}
 
@@ -117,21 +144,53 @@ class Mailer {
 		}
 
 		$fromLine = !empty($this->fromName) ? "{$this->fromName} <{$this->fromEmail}>" : $this->fromEmail;
+		$boundary = "----=_Part_".md5(uniqid((string)time(), true));
 
 		$headers = [];
 		$headers[] = "From: ".$fromLine;
 		$headers[] = "To: ".implode(', ', $this->to);
 		$headers[] = "Subject: ".$this->subject;
 		$headers[] = "MIME-Version: 1.0";
-		$headers[] = $this->isHtml
-			? "Content-type: text/html; charset=UTF-8"
-			: "Content-type: text/plain; charset=UTF-8";
+
+		if (!empty($this->attachments)) {
+			$headers[] = "Content-Type: multipart/mixed; boundary=\"{$boundary}\"";
+		} else {
+			$headers[] = $this->isHtml
+				? "Content-Type: text/html; charset=UTF-8"
+				: "Content-Type: text/plain; charset=UTF-8";
+		}
 
 		// SMTP relies on strictly formatted CRLF line-endings
 		$rawHeaders = implode("\r\n", $headers)."\r\n\r\n";
 
 		// Normalize any stray system newlines in body in CRLF
+		$payload = "";
 		$normalizeBody = str_replace(["\r\n", "\r", "\n"], "\r\n", $this->body);
+
+		if (!empty($this->attachments)) {
+			$contentType = $this->isHtml ? 'text/html' : 'text/plain';
+
+			/* Part 1 of payload */
+			$payload .= "--{$boundary}\r\n";
+			$payload .= "Content-Type: {$contentType}; charset=UTF-8\r\n";
+			$payload .= "Content-Transfer-Encoding: 8bit\r\n\r\n";
+			$payload .= $normalizeBody."\r\n\r\n";
+
+			/* Part 2 of payload */
+			foreach ($this->attachments as $attachment) {
+				$encodedContent = chunk_split(base64_encode($attachment['data']));
+
+				$payload .= "--{$boundary}\r\n";
+				$payload .= "Content-Type: application/octet-stream; name=\"{$attachment['name']}\"\r\n";
+				$payload .= "Content-Transfer-Encoding: base64\r\n";
+				$payload .= "Content-Disposition: attachment; filename=\"{$attachment['name']}\"\r\n\r\n";
+				$payload .= $encodedContent."\r\n";
+			}
+
+			$payload .= "--{$boundary}--\r\n";
+		} else {
+			$payload = $normalizeBody."\r\n";
+		}
 
 		fputs($socket, $rawHeaders . $normalizeBody."\r\n.\r\n");
 		$dataResponse = $this->readResponse($socket);
