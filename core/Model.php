@@ -40,6 +40,20 @@ abstract class Model implements JsonSerializable {
         return $this->attributes[$name] ?? null;
     }
 
+    public function __isset($name): bool {
+        // Checks if exists in the attributes
+        if (isset($this->attributes[$name])) {
+            return true;
+        }
+
+        // Optional: Check if there is relationships
+        if (isset($this->relations[$name])) {
+            return true;
+        }
+
+        return false;
+    }
+
     public function setRelation(string $relation, mixed $value) {
         $this->relations[$relation] = $value;
     }
